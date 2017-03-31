@@ -58,7 +58,7 @@ def hasTwoPairs(cards):
     for card in cards:
         if countSameRank(card, cards) == 2:
             pairedCards += 1
-    return pairedCards == 4 # 2 pairs = 4 cards
+    return pairedCards >= 4 # 2 pairs = 4 cards
 
 def hasThreeOfAKind(cards):
     for card in cards:
