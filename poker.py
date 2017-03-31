@@ -192,9 +192,3 @@ print("---")
 print("TOTAL:          " + getProbability(fourOfAKind+fullHouse+flush+straight+threeOfAKind+twoPairs+pairedCards+noShit, games))
 print()
 print("Pocket Pairs:    " + getProbability(pocketPair, games))
-
-
-
-
-
-
