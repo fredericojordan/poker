@@ -4,6 +4,7 @@ Created on 31 de mar de 2017
 @author: fvj
 '''
 from random import shuffle
+from time import time
 
 # Royal flush       0.0032%
 # Straight flush    0.0279%
@@ -47,6 +48,13 @@ def getRandomDeck():
     shuffle(deck)
     return deck
 
+def getSuited(cards, suit):
+    suited = []
+    for c in cards:
+        if c.suit == suit:
+            suited.append(c)
+    return suited
+
 def hasPair(cards):
     for card in cards:
         if countSameRank(card, cards) == 2:
@@ -77,7 +85,7 @@ def hasFullHouse(cards):
 
 def hasFlush(cards):
     for card in cards:
-        if countSuit(card, cards) >= 5:
+        if countSameSuit(card, cards) >= 5:
             return True
     return False
 
@@ -94,6 +102,13 @@ def hasStraight(cards):
                 return True
         else:
             count = 0
+    return False
+
+def hasStraightFlush(cards):
+    for suit in CARD_SUITS:
+        suited = getSuited(cards, suit)
+        if hasFlush(suited) and hasStraight(suited):
+            return True
     return False
 
 def getHighCard(cards):
@@ -119,7 +134,7 @@ def countSameRank(card, cards):
             count += 1
     return count
 
-def countSuit(card, cards):
+def countSameSuit(card, cards):
     count = 0
     for c in cards:
         if c.suit == card.suit:
@@ -131,10 +146,11 @@ def getProbability(occurences, total):
         return ' 0.00%'
     return '{:6.2%} (1 in {:.1f})'.format(occurences/games, games/occurences)
 
-games = 10000
+games = 100000
 
 pocketPair = 0
 
+straightFlush = 0
 fourOfAKind = 0
 fullHouse = 0
 flush = 0
@@ -146,6 +162,7 @@ noShit = 0
 
 print('Gathering statistics on {} games...'.format(games))
 
+start = time()
 for _ in range(games):
     newDeck = getRandomDeck()
     
@@ -161,8 +178,10 @@ for _ in range(games):
     
     if hasPair(myHand):
         pocketPair += 1
-        
-    if hasFourOfAKind(availableCards):
+    
+    if hasStraightFlush(availableCards):
+        straightFlush += 1
+    elif hasFourOfAKind(availableCards):
         fourOfAKind += 1
     elif hasFullHouse(availableCards):
         fullHouse += 1
@@ -179,7 +198,9 @@ for _ in range(games):
     else:
         noShit += 1
 
-print("---- Results ----")        
+print("Took {:.1f} seconds".format(time()-start))
+print("---- Results ----")
+print("Straight flush:  " + getProbability(straightFlush, games))
 print("Four of a Kind:  " + getProbability(fourOfAKind, games))
 print("Full House:      " + getProbability(fullHouse, games))
 print("Flush:           " + getProbability(flush, games))
@@ -189,6 +210,6 @@ print("Two Pairs:       " + getProbability(twoPairs, games))
 print("Pair:            " + getProbability(pairedCards, games))
 print("Fucking nothing: " + getProbability(noShit, games))
 print("---")
-print("TOTAL:          " + getProbability(fourOfAKind+fullHouse+flush+straight+threeOfAKind+twoPairs+pairedCards+noShit, games))
+print("TOTAL:          " + getProbability(straightFlush+fourOfAKind+fullHouse+flush+straight+threeOfAKind+twoPairs+pairedCards+noShit, games))
 print()
 print("Pocket Pairs:    " + getProbability(pocketPair, games))
