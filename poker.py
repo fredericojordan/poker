@@ -4,7 +4,7 @@ Created on 31 de mar de 2017
 @author: fvj
 '''
 from random import shuffle
-from time import time, sleep
+from time import time
 
 # Royal flush       0.0032%
 # Straight flush    0.0279%
@@ -38,6 +38,8 @@ class Card:
         return CARD_RANKS.index(self.rank) == CARD_RANKS.index(Card.rank)
     def __ne__(self, Card):
         return CARD_RANKS.index(self.rank) != CARD_RANKS.index(Card.rank)
+    def __add__(self, Card):
+        return CARD_RANKS.index(self.rank) + CARD_RANKS.index(Card.rank)  
     def __sub__(self, Card):
         return CARD_RANKS.index(self.rank) - CARD_RANKS.index(Card.rank)  
     
@@ -103,7 +105,7 @@ def getThreeOfAKind(cards):
     for card in cards:
         if countSameRank(card, cards) == 3:
             trips.append(card)
-    return trips
+    return order(trips)
 
 def getStraight(cards):
     ordered = order(cards)
@@ -178,8 +180,9 @@ def hasThreeOfAKind(cards):
 def hasFourOfAKind(cards):
     return len(getFourOfAKind(cards)) > 0
 
-def hasFullHouse(cards):
-    return hasPair(cards) and hasThreeOfAKind(cards)
+def hasFullHouse(cards): #FIXME
+    return (hasThreeOfAKind(cards) and hasPair(cards)) or \
+        (len(getThreeOfAKind(cards)) > 3)
 
 def hasFlush(cards):
     return len(getFlush(cards)) > 0
@@ -202,7 +205,7 @@ def hasRoyalStraightFlush(cards):
 def getProbability(occurences, total):
     if occurences == 0:
         return ' 0.000%'
-    return '{:7.3%} (1 in {:.1f})'.format(occurences/games, games/occurences)
+    return '{:7.3%} (1 in {:.1f})'.format(occurences/total, total/occurences)
 
 def sameOrHigherCount(card, cards):
     count = 0
@@ -212,136 +215,230 @@ def sameOrHigherCount(card, cards):
     return count
 
 def getHandCode(cards):
-    if hasRoyalStraightFlush(cards):
-        return 9
-    elif hasStraightFlush(cards):
-        return 8
-    elif hasFourOfAKind(cards):
-        return 7
-    elif hasFullHouse(cards):
-        return 6
-    elif hasFlush(cards):
-        return 5
-    elif hasStraight(cards):
-        return 4
-    elif hasThreeOfAKind(cards):
-        return 3
-    elif hasTwoPairs(cards):
-        return 2
-    elif hasPair(cards):
-        return 1
-    else:
-        return 0
-
-def getKickerValue(cards):
-    if hasRoyalStraightFlush(cards):
-        return 0
-    elif hasStraightFlush(cards):
-        return CARD_RANKS.index(getStraightFlush(cards)[0].rank)
-    elif hasFourOfAKind(cards):
-        return CARD_RANKS.index(getFourOfAKind(cards)[0].rank)
-    elif hasFullHouse(cards):
-        return CARD_RANKS.index(getFullHouse(cards)[0].rank)
-    elif hasFlush(cards):
-        return CARD_RANKS.index(getFlush(cards)[0].rank)
-    elif hasStraight(cards):
-        return CARD_RANKS.index(getStraight(cards)[0].rank)
-    elif hasThreeOfAKind(cards):
-        return CARD_RANKS.index(getThreeOfAKind(cards)[0].rank)
-    elif hasTwoPairs(cards):
-        return CARD_RANKS.index(getPairs(cards)[0].rank)
-    elif hasPair(cards):
-        return CARD_RANKS.index(getPairs(cards)[0].rank)
-    else:
-        return CARD_RANKS.index(getHighCard(cards).rank)
-
-def getHandValue(cards): # FIXME: differentiate between same hands and kicker
-    hand = getHandCode(cards) << 5*4
-    kicker = getKickerValue(cards) << 4*4
-    return hand + kicker
-
-games = 1000000
-
-pocketPair = 0
-pocketFaces = 0
-pocketSuitedFaces = 0
-
-royalFlush = 0
-straightFlush = 0
-fourOfAKind = 0
-fullHouse = 0
-flush = 0
-straight = 0
-threeOfAKind = 0
-twoPairs = 0
-pairedCards = 0
-noPair = 0
-
-print('Gathering statistics on {} games...'.format(games))
-
-start = time()
-for _ in range(games):
-    newDeck = getRandomDeck()
+    code = 0
     
-    myHand = [newDeck.pop(), newDeck.pop()]
-    newDeck.pop() # burn
+    if hasRoyalStraightFlush(cards):
+        code = 9
+    elif hasStraightFlush(cards):
+        code = 8
+    elif hasFourOfAKind(cards):
+        code = 7
+    elif hasFullHouse(cards):
+        code = 6
+    elif hasFlush(cards):
+        code = 5
+    elif hasStraight(cards):
+        code = 4
+    elif hasThreeOfAKind(cards):
+        code = 3
+    elif hasTwoPairs(cards):
+        code = 2
+    elif hasPair(cards):
+        code = 1
+    
+    return code << 5*4
+
+def getHandDescription(score):
+    code = score & (0xf<<5*4)
+    code = code >> 5*4
+    if code == 9:
+        return 'Royal Straight Flush'
+    if code == 8:
+        return 'Straight Flush'
+    if code == 7:
+        return 'Four of a Kind'
+    if code == 6:
+        return 'Full House'
+    if code == 5:
+        return 'Flush'
+    if code == 4:
+        return 'Straight'
+    if code == 3:
+        return 'Three of a Kind'
+    if code == 2:
+        return 'Two Pairs'
+    if code == 1:
+        return 'One Pair'
+    if code == 0:
+        return 'No Pair'
+    return '<ERROR>'
+
+def getKickersValue(cards):
+    if hasRoyalStraightFlush(cards):
+        return 0
+    elif hasStraightFlush(cards):
+        return CARD_RANKS.index(getStraightFlush(cards)[0].rank) << 4*4
+    elif hasFourOfAKind(cards):
+        ordCards = order(cards)
+        value = CARD_RANKS.index(getFourOfAKind(cards)[0].rank) << 4*4    
+        for card in getFourOfAKind(cards):
+            ordCards.remove(card)
+        return value + (CARD_RANKS.index(ordCards[0].rank) << 3*4)
+    elif hasFullHouse(cards):
+        return (CARD_RANKS.index(getFullHouse(cards)[0].rank) << 4*4) + (CARD_RANKS.index(getFullHouse(cards)[3].rank) << 3*4)
+    elif hasFlush(cards):
+        return (CARD_RANKS.index(getFlush(cards)[0].rank) << 4*4) + \
+            (CARD_RANKS.index(getFlush(cards)[1].rank) << 3*4) + \
+            (CARD_RANKS.index(getFlush(cards)[2].rank) << 2*4) + \
+            (CARD_RANKS.index(getFlush(cards)[3].rank) << 1*4) + \
+            CARD_RANKS.index(getFlush(cards)[4].rank)
+    elif hasStraight(cards):
+        return CARD_RANKS.index(getStraight(cards)[0].rank) << 4*4 
+    elif hasThreeOfAKind(cards):
+        ordCards = order(cards)
+        value = CARD_RANKS.index(getThreeOfAKind(cards)[0].rank) << 4*4
+        for card in getThreeOfAKind(cards):
+            ordCards.remove(card)
+        return value + (CARD_RANKS.index(ordCards[0].rank) << 3*4) + (CARD_RANKS.index(ordCards[1].rank) << 2*4) 
+    elif hasTwoPairs(cards):
+        ordCards = order(cards)
+        value = (CARD_RANKS.index(getPairs(cards)[0].rank) << 4*4) + (CARD_RANKS.index(getPairs(cards)[2].rank) << 3*4)  
+        for card in getPairs(cards)[:4]:
+            ordCards.remove(card)
+        return value + (CARD_RANKS.index(ordCards[0].rank) << 2*4)
+    elif hasPair(cards):
+        ordCards = order(cards)
+        value = CARD_RANKS.index(getPairs(cards)[0].rank) << 4*4 
+        for card in getPairs(cards):
+            ordCards.remove(card)
+        return value + (CARD_RANKS.index(ordCards[0].rank) << 3*4) + \
+            (CARD_RANKS.index(ordCards[1].rank) << 2*4) + \
+            (CARD_RANKS.index(ordCards[2].rank) << 1*4) + \
+            CARD_RANKS.index(ordCards[3].rank)
+    else:
+        ordCards = order(cards)
+        return (CARD_RANKS.index(ordCards[0].rank) << 4*4) + \
+            (CARD_RANKS.index(ordCards[1].rank) << 3*4) + \
+            (CARD_RANKS.index(ordCards[2].rank) << 2*4) + \
+            (CARD_RANKS.index(ordCards[3].rank) << 1*4) + \
+            CARD_RANKS.index(ordCards[4].rank) 
+
+def getHandValue(cards):
+    return getHandCode(cards) + getKickersValue(cards)
+
+def playHand(players):
+    newDeck = getRandomDeck()
+    hands = {}
+    for player in players:
+        hands[player] = [newDeck.pop(), newDeck.pop()]
+
     flop = [newDeck.pop(), newDeck.pop(), newDeck.pop()]
-    newDeck.pop() # burn
     turn = [newDeck.pop()]
-    newDeck.pop() # burn
     river = [newDeck.pop()]
     
-    availableCards = myHand+flop+turn+river
+#     print(order(flop+turn+river))
     
-#     print(format(getHandValue(availableCards), '#08x') + ' ' + str(order(availableCards)))
-    
-    if hasPair(myHand):
-        pocketPair += 1
-    
-    if sameOrHigherCount(Card('J', ''), myHand) == 2:
-        pocketFaces += 1
+    best_score = 0
+    best_player = []
+    best_hand = []
         
-    if sameOrHigherCount(Card('J', ''), myHand) == 2 and countSameSuit(myHand[0], myHand) == 2:
-        pocketSuitedFaces += 1
+    for player, hand in hands.items():
+        availableCards = hand+flop+turn+river
+        player_score = getHandValue(availableCards)
+        
+#         print(str(player) + ': 0x' + str(format(player_score, '06x')) + ' ' + str(order(hand)))
+         
+        if player_score > best_score:
+            best_player = [player]
+            best_score = player_score
+            best_hand = [availableCards]
+        elif player_score == best_score:
+            best_player.append(player)
+            best_hand.append(availableCards)
+        
+    return [best_player, best_score, best_hand]  
     
-    if hasRoyalStraightFlush(availableCards):
-        royalFlush += 1
-    elif hasStraightFlush(availableCards):
-        straightFlush += 1
-    elif hasFourOfAKind(availableCards):
-        fourOfAKind += 1
-    elif hasFullHouse(availableCards):
-        fullHouse += 1
-    elif hasFlush(availableCards):
-        flush += 1
-    elif hasStraight(availableCards):
-        straight += 1
-    elif hasThreeOfAKind(availableCards):
-        threeOfAKind += 1
-    elif hasTwoPairs(availableCards):
-        twoPairs += 1
-    elif hasPair(availableCards):
-        pairedCards += 1
-    else:
-        noPair += 1
-
-print("Took {:.1f} seconds".format(time()-start))
-print()
-print("---- Results ----")
-print("Royal flush:     " + getProbability(royalFlush, games))
-print("Straight flush:  " + getProbability(straightFlush, games))
-print("Four of a Kind:  " + getProbability(fourOfAKind, games))
-print("Full House:      " + getProbability(fullHouse, games))
-print("Flush:           " + getProbability(flush, games))
-print("Straight:        " + getProbability(straight, games))
-print("Three of a Kind: " + getProbability(threeOfAKind, games))
-print("Two Pairs:       " + getProbability(twoPairs, games))
-print("Pair:            " + getProbability(pairedCards, games))
-print("No pair:         " + getProbability(noPair, games))
-print("---")
-print("TOTAL:          " + getProbability(royalFlush+straightFlush+fourOfAKind+fullHouse+flush+straight+threeOfAKind+twoPairs+pairedCards+noPair, games))
-print()
-print("---- Pocket ----")
-print("Pairs:           " + getProbability(pocketPair, games))
-print("Faces:           " + getProbability(pocketFaces, games))
-print("Suited faces:    " + getProbability(pocketSuitedFaces, games))
+def handDealtTest(games):
+    pocketPair = 0
+    pocketFaces = 0
+    pocketSuitedFaces = 0
+    
+    handOccurrences = [0 for _ in range(10)]
+    
+    print('Gathering statistics on {} games...'.format(games))
+    
+    start = time()
+    for i in range(games):
+        newDeck = getRandomDeck()
+        
+        myHand = [newDeck.pop(), newDeck.pop()]
+        newDeck.pop() # burn
+        flop = [newDeck.pop(), newDeck.pop(), newDeck.pop()]
+        newDeck.pop() # burn
+        turn = [newDeck.pop()]
+        newDeck.pop() # burn
+        river = [newDeck.pop()]
+        
+        availableCards = myHand+flop+turn+river
+        
+        if hasPair(myHand):
+            pocketPair += 1
+        
+        if sameOrHigherCount(Card('J', ''), myHand) == 2:
+            pocketFaces += 1
+            
+        if sameOrHigherCount(Card('J', ''), myHand) == 2 and countSameSuit(myHand[0], myHand) == 2:
+            pocketSuitedFaces += 1
+        
+        if hasRoyalStraightFlush(availableCards):
+            handOccurrences[9] += 1
+        elif hasStraightFlush(availableCards):
+            handOccurrences[8] += 1
+        elif hasFourOfAKind(availableCards):
+            handOccurrences[7] += 1
+        elif hasFullHouse(availableCards):
+            handOccurrences[6] += 1
+        elif hasFlush(availableCards):
+            handOccurrences[5] += 1
+        elif hasStraight(availableCards):
+            handOccurrences[4] += 1
+        elif hasThreeOfAKind(availableCards):
+            handOccurrences[3] += 1
+        elif hasTwoPairs(availableCards):
+            handOccurrences[2] += 1
+        elif hasPair(availableCards):
+            handOccurrences[1] += 1
+        else:
+            handOccurrences[0] += 1
+            
+        print('\n'.join('{:7d} | {:4.1f} % | {}'.format(score, 100*score/games, '#'*int(score/(games/100))) for score in handOccurrences))
+        print('{:7d} | {:4.1f} %'.format(i, 100*i/games))
+        print()
+        
+    HAND_DESC = ["Royal flush:     ", \
+                 "Straight flush:  ", \
+                 "Four of a Kind:  ", \
+                 "Full House:      ", \
+                 "Flush:           ", \
+                 "Straight:        ", \
+                 "Three of a Kind: ", \
+                 "Two Pairs:       ", \
+                 "Pair:            ", \
+                 "No pair:         "]
+    
+    print("Took {:.1f} seconds".format(time()-start))
+    print()
+    print("---- Results ----")
+    print('\n'.join('{} {:7d} |  {}'.format(HAND_DESC[i], handOccurrences[i], getProbability(handOccurrences[i], games)) for i in range(10)))
+    print("--- TOTAL: --- {:10d} | {}".format(games, getProbability(sum(handOccurrences), games)))
+    print()
+    print("---- Pocket ----")
+    print("Pairs:                    | " + getProbability(pocketPair, games))
+    print("Faces:                    | " + getProbability(pocketFaces, games))
+    print("Suited faces:             | " + getProbability(pocketSuitedFaces, games))
+    
+def handPlayedTest(games):
+    players = ['Fred', 'Flavio', 'Marcelo', 'Amauri', 'Apse', 'Henrique']
+    winning_hands = [0 for _ in range(10)]
+    for _ in range(games):
+        winner = playHand(players)
+        winning_hands[winner[1]>>5*4] += 1
+        print('\n'.join('{:7d} | {:4.1f} % | {}'.format(score, 100*score/games, '#'*int(score/(games/150))) for score in winning_hands))
+        print()
+    
+if __name__ == '__main__':
+    print('Starting...')
+    games = 100000
+#     handPlayedTest(games)
+    handDealtTest(games)
+    print('Done!')
