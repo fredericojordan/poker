@@ -20,16 +20,16 @@ from time import time
 CARD_RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A']
 CARD_SUITS = ['♦', '♠', '♥', '♣']
 
-HAND_DESCRIPTION = ["No pair:         ", \
-                    "Pair:            ", \
-                    "Two Pairs:       ", \
-                    "Three of a Kind: ", \
-                    "Straight:        ", \
-                    "Flush:           ", \
-                    "Full House:      ", \
-                    "Four of a Kind:  ", \
-                    "Straight flush:  ", \
-                    "Royal flush:     "]
+HAND_DESCRIPTION = ["No pair:        ", \
+                    "Pair:           ", \
+                    "Two Pairs:      ", \
+                    "Three of a Kind:", \
+                    "Straight:       ", \
+                    "Flush:          ", \
+                    "Full House:     ", \
+                    "Four of a Kind: ", \
+                    "Straight flush: ", \
+                    "Royal flush:    "]
 
 class Card:
     def __init__(self, value, suit):
@@ -419,7 +419,7 @@ def handDealtTest(games):
     print("Took {:.1f} seconds".format(time()-start))
     print("\n---- Results ----")
     print('\n'.join('{} {:7d} | {}'.format(HAND_DESCRIPTION[i], handOccurrences[i], getProbability(handOccurrences[i], games)) for i in range(10)))
-    print("--- TOTAL: --- {:10d} | {}\n".format(games, getProbability(sum(handOccurrences), games)))
+    print("--- TOTAL --- {:10d} | {}\n".format(games, getProbability(sum(handOccurrences), games)))
     print("---- Pocket ----")
     print("Pairs:                    | " + getProbability(pocketPair, games))
     print("Faces:                    | " + getProbability(pocketFaces, games))
@@ -436,7 +436,7 @@ def handPlayedTest(games):
         print('{:7d} | {:5.1f} %\n'.format(i, 100*i/games))
     print("Took {:.1f} seconds\n".format(time()-start))
     print('\n'.join('{} {:7d} | {}'.format(HAND_DESCRIPTION[i], winning_hands[i], getProbability(winning_hands[i], games)) for i in range(10)))
-    print('--- TOTAL ---  {:10d} | {}\n'.format(sum(winning_hands), getProbability(sum(winning_hands), games)))
+    print('--- TOTAL --- {:10d} | {}\n'.format(sum(winning_hands), getProbability(sum(winning_hands), games)))
     
 if __name__ == '__main__':
     print('Starting...')
