@@ -20,6 +20,17 @@ from time import time
 CARD_RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A']
 CARD_SUITS = ['♦', '♠', '♥', '♣']
 
+HAND_DESCRIPTION = ["No pair:         ", \
+                    "Pair:            ", \
+                    "Two Pairs:       ", \
+                    "Three of a Kind: ", \
+                    "Straight:        ", \
+                    "Flush:           ", \
+                    "Full House:      ", \
+                    "Four of a Kind:  ", \
+                    "Straight flush:  ", \
+                    "Royal flush:     "]
+
 class Card:
     def __init__(self, value, suit):
         self.rank = value
@@ -134,7 +145,7 @@ def getStraight(cards):
     if start == -1:
         return []
     else:
-        return ordered[start:end]  # FIXME: remove duplicates
+        return ordered[start:end]
 
 def getFlush(cards):
     for suit in CARD_SUITS:
@@ -204,8 +215,8 @@ def hasRoyalStraightFlush(cards):
 
 def getProbability(occurences, total):
     if occurences == 0:
-        return ' 0.000%'
-    return '{:7.3%} (1 in {:.1f})'.format(occurences/total, total/occurences)
+        return '  0.000%'
+    return '{:8.3%} (1 in {:.1f})'.format(occurences/total, total/occurences)
 
 def sameOrHigherCount(card, cards):
     count = 0
@@ -404,37 +415,28 @@ def handDealtTest(games):
         print('\n'.join('{:7d} | {:4.1f} % | {}'.format(score, 100*score/games, '#'*int(score/(games/100))) for score in handOccurrences))
         print('{:7d} | {:4.1f} %'.format(i, 100*i/games))
         print()
-        
-    HAND_DESC = ["Royal flush:     ", \
-                 "Straight flush:  ", \
-                 "Four of a Kind:  ", \
-                 "Full House:      ", \
-                 "Flush:           ", \
-                 "Straight:        ", \
-                 "Three of a Kind: ", \
-                 "Two Pairs:       ", \
-                 "Pair:            ", \
-                 "No pair:         "]
     
     print("Took {:.1f} seconds".format(time()-start))
-    print()
-    print("---- Results ----")
-    print('\n'.join('{} {:7d} |  {}'.format(HAND_DESC[i], handOccurrences[i], getProbability(handOccurrences[i], games)) for i in range(10)))
-    print("--- TOTAL: --- {:10d} | {}".format(games, getProbability(sum(handOccurrences), games)))
-    print()
+    print("\n---- Results ----")
+    print('\n'.join('{} {:7d} | {}'.format(HAND_DESCRIPTION[i], handOccurrences[i], getProbability(handOccurrences[i], games)) for i in range(10)))
+    print("--- TOTAL: --- {:10d} | {}\n".format(games, getProbability(sum(handOccurrences), games)))
     print("---- Pocket ----")
     print("Pairs:                    | " + getProbability(pocketPair, games))
     print("Faces:                    | " + getProbability(pocketFaces, games))
     print("Suited faces:             | " + getProbability(pocketSuitedFaces, games))
     
 def handPlayedTest(games):
-    players = ['Fred', 'Flavio', 'Marcelo', 'Amauri', 'Apse', 'Henrique']
+    start = time()
+    players = ['Fred', 'Flavio', 'Marcelo', 'Amauri', 'Apse', 'Henrique', 'Zeni']
     winning_hands = [0 for _ in range(10)]
-    for _ in range(games):
+    for i in range(games):
         winner = playHand(players)
         winning_hands[winner[1]>>5*4] += 1
-        print('\n'.join('{:7d} | {:4.1f} % | {}'.format(score, 100*score/games, '#'*int(score/(games/150))) for score in winning_hands))
-        print()
+        print('\n'.join('{:7d} | {:5.1f} % | {}'.format(score, 100*score/games, '#'*int(score/(games/150))) for score in winning_hands))
+        print('{:7d} | {:5.1f} %\n'.format(i, 100*i/games))
+    print("Took {:.1f} seconds\n".format(time()-start))
+    print('\n'.join('{} {:7d} | {}'.format(HAND_DESCRIPTION[i], winning_hands[i], getProbability(winning_hands[i], games)) for i in range(10)))
+    print('--- TOTAL ---  {:10d} | {}\n'.format(sum(winning_hands), getProbability(sum(winning_hands), games)))
     
 if __name__ == '__main__':
     print('Starting...')
