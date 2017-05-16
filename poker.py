@@ -20,7 +20,7 @@ from time import time
 CARD_RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A']
 CARD_SUITS = ['♦', '♠', '♥', '♣']
 
-HAND_DESCRIPTION = ["No pair:        ", \
+HAND_DESCRIPTION = ["No Pair:        ", \
                     "Pair:           ", \
                     "Two Pairs:      ", \
                     "Three of a Kind:", \
@@ -28,8 +28,8 @@ HAND_DESCRIPTION = ["No pair:        ", \
                     "Flush:          ", \
                     "Full House:     ", \
                     "Four of a Kind: ", \
-                    "Straight flush: ", \
-                    "Royal flush:    "]
+                    "Straight Flush: ", \
+                    "Royal Flush:    "]
 
 class Card:
     def __init__(self, value, suit):
@@ -252,27 +252,7 @@ def getHandCode(cards):
 def getHandDescription(score):
     code = score & (0xf<<5*4)
     code = code >> 5*4
-    if code == 9:
-        return 'Royal Straight Flush'
-    if code == 8:
-        return 'Straight Flush'
-    if code == 7:
-        return 'Four of a Kind'
-    if code == 6:
-        return 'Full House'
-    if code == 5:
-        return 'Flush'
-    if code == 4:
-        return 'Straight'
-    if code == 3:
-        return 'Three of a Kind'
-    if code == 2:
-        return 'Two Pairs'
-    if code == 1:
-        return 'One Pair'
-    if code == 0:
-        return 'No Pair'
-    return '<ERROR>'
+    return HAND_DESCRIPTION[code].strip().rstrip(':')
 
 def getKickersValue(cards):
     if hasRoyalStraightFlush(cards):
@@ -427,20 +407,27 @@ def handDealtTest(games):
     
 def handPlayedTest(games):
     start = time()
-    players = ['Fred', 'Flavio', 'Marcelo', 'Amauri', 'Apse', 'Henrique', 'Zeni']
+    players = ['Fred', 'Flavio', 'Marcelo', 'Amauri', 'Apse', 'Henrique']
     winning_hands = [0 for _ in range(10)]
+    scores = []
     for i in range(games):
         winner = playHand(players)
         winning_hands[winner[1]>>5*4] += 1
+        scores.append(winner[1])
         print('\n'.join('{:7d} | {:5.1f} % | {}'.format(score, 100*score/games, '#'*int(score/(games/150))) for score in winning_hands))
         print('{:7d} | {:5.1f} %\n'.format(i, 100*i/games))
     print("Took {:.1f} seconds\n".format(time()-start))
     print('\n'.join('{} {:7d} | {}'.format(HAND_DESCRIPTION[i], winning_hands[i], getProbability(winning_hands[i], games)) for i in range(10)))
     print('--- TOTAL --- {:10d} | {}\n'.format(sum(winning_hands), getProbability(sum(winning_hands), games)))
+    scores.sort(reverse=True)
+    r = open('result.txt', 'w')
+    for score in scores:
+        r.write('0x' + format(score, '06x') + '\n')
+    r.close()
     
 if __name__ == '__main__':
     print('Starting...')
-    games = 100000
-#     handPlayedTest(games)
-    handDealtTest(games)
+    games = 1000000
+    handPlayedTest(games)
+#     handDealtTest(games)
     print('Done!')
