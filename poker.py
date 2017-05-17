@@ -31,6 +31,8 @@ HAND_DESCRIPTION = ["No Pair:        ", \
                     "Straight Flush: ", \
                     "Royal Flush:    "]
 
+DEFAULT_MAX_GAME_COUNT = 100000
+
 class Card:
     def __init__(self, value, suit):
         self.rank = value
@@ -420,14 +422,14 @@ def handPlayedTest(games):
     print('\n'.join('{} {:7d} | {}'.format(HAND_DESCRIPTION[i], winning_hands[i], getProbability(winning_hands[i], games)) for i in range(10)))
     print('--- TOTAL --- {:10d} | {}\n'.format(sum(winning_hands), getProbability(sum(winning_hands), games)))
     scores.sort(reverse=True)
-    r = open('result.txt', 'w')
+    filename = '{}players.txt'.format(len(players))
+    r = open(filename, 'a')
     for score in scores:
         r.write('0x' + format(score, '06x') + '\n')
     r.close()
     
 if __name__ == '__main__':
     print('Starting...')
-    games = 1000000
-    handPlayedTest(games)
-#     handDealtTest(games)
+    handPlayedTest(888900)
+#     handDealtTest(DEFAULT_MAX_GAME_COUNT)
     print('Done!')
