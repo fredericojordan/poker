@@ -3,8 +3,9 @@ Created on 31 de mar de 2017
 
 @author: fvj
 '''
+
 from random import shuffle
-from time import time
+import time
 
 # Royal flush       0.0032%
 # Straight flush    0.0279%
@@ -306,10 +307,10 @@ def getKickersValue(cards):
             (CARD_RANKS.index(ordCards[3].rank) << 1*4) + \
             CARD_RANKS.index(ordCards[4].rank) 
 
-def getHandValue(cards):
+def getHandScore(cards):
     return getHandCode(cards) + getKickersValue(cards)
 
-def playHand(players):
+def dealHand(players):
     newDeck = getRandomDeck()
     hands = {}
     for player in players:
@@ -327,7 +328,7 @@ def playHand(players):
         
     for player, hand in hands.items():
         availableCards = hand+flop+turn+river
-        player_score = getHandValue(availableCards)
+        player_score = getHandScore(availableCards)
         
 #         print(str(player) + ': 0x' + str(format(player_score, '06x')) + ' ' + str(order(hand)))
          
@@ -341,7 +342,7 @@ def playHand(players):
         
     return [best_player, best_score, best_hand]  
     
-def handDealtTest(games):
+def handDealtStats(games):
     pocketPair = 0
     pocketFaces = 0
     pocketSuitedFaces = 0
@@ -350,7 +351,7 @@ def handDealtTest(games):
     
     print('Gathering statistics on {} games...'.format(games))
     
-    start = time()
+    start = time.time()
     for i in range(games):
         newDeck = getRandomDeck()
         
@@ -398,7 +399,7 @@ def handDealtTest(games):
         print('{:7d} | {:4.1f} %'.format(i, 100*i/games))
         print()
     
-    print("Took {:.1f} seconds".format(time()-start))
+    print("Took {:.1f} seconds".format(time.time()-start))
     print("\n---- Results ----")
     print('\n'.join('{} {:7d} | {}'.format(HAND_DESCRIPTION[i], handOccurrences[i], getProbability(handOccurrences[i], games)) for i in range(10)))
     print("--- TOTAL --- {:10d} | {}\n".format(games, getProbability(sum(handOccurrences), games)))
@@ -407,18 +408,18 @@ def handDealtTest(games):
     print("Faces:                    | " + getProbability(pocketFaces, games))
     print("Suited faces:             | " + getProbability(pocketSuitedFaces, games))
     
-def handPlayedTest(games):
-    start = time()
+def winningHandStats(games):
+    start = time.time()
     players = ['Fred', 'Flavio', 'Marcelo', 'Amauri', 'Apse', 'Henrique']
     winning_hands = [0 for _ in range(10)]
     scores = []
     for i in range(games):
-        winner = playHand(players)
+        winner = dealHand(players)
         winning_hands[winner[1]>>5*4] += 1
         scores.append(winner[1])
         print('\n'.join('{:7d} | {:5.1f} % | {}'.format(score, 100*score/games, '#'*int(score/(games/150))) for score in winning_hands))
         print('{:7d} | {:5.1f} %\n'.format(i, 100*i/games))
-    print("Took {:.1f} seconds\n".format(time()-start))
+    print("Took {:.1f} seconds\n".format(time.time()-start))
     print('\n'.join('{} {:7d} | {}'.format(HAND_DESCRIPTION[i], winning_hands[i], getProbability(winning_hands[i], games)) for i in range(10)))
     print('--- TOTAL --- {:10d} | {}\n'.format(sum(winning_hands), getProbability(sum(winning_hands), games)))
     scores.sort(reverse=True)
@@ -428,8 +429,173 @@ def handPlayedTest(games):
         r.write('0x' + format(score, '06x') + '\n')
     r.close()
     
+def getAIdecision(activePlayers, player, cash, pot, hands, tableCards): # TODO: better decisions
+    if len(activePlayers) > 1 and getHighCard(hands[player]) < Card('8', ''):
+        return -1
+    return 0
+    
+def bidRound(activePlayers, humanPlayers, cash, pot, hands, tableCards):
+    foldPlayers = []
+    
+    for player in activePlayers:
+        if player in foldPlayers:
+            continue
+        
+        if player in humanPlayers:
+            print(str(player) + ' playing.')
+            print('Your hand: ' + str(order(hands[player])))
+            print('You currently have {:.0f} invested on a {:.0f} pot.'.format(pot[player], sum(list(pot.values()))))
+            print('You still have {:.0f} available.'.format(cash[player]))
+            print('Would you like to fold [-1], check [0] (default), or raise to amount n [n]?')
+            try:
+                command = int(input())
+            except:
+                command = 0
+        else:
+            command = getAIdecision(activePlayers, player, cash, pot, hands, tableCards)
+
+        if command > 0 and command < max(list(pot.values())):
+            command = 0
+                                
+        if command == 0: # check
+            bid = max(list(pot.values()))
+            raise_bid = bid-pot[player]
+            if raise_bid > 0:
+                print(player + ' covers pot.')
+            else:
+                print(player + ' checks.')
+            if cash[player] > raise_bid:
+                cash[player] -= raise_bid
+                pot[player] += raise_bid
+            else:
+                print(player + ' is ALL IN!')
+                pot[player] += cash[player]
+                cash[player] = 0
+        elif command < 0: # fold
+            print(player + ' folds.')
+            foldPlayers.append(player)
+        else: # raise
+            print(player + ' raises to ' + str(command) + '!')
+            raise_bid = command-pot[player]
+            cash[player] -= raise_bid
+            pot[player] += raise_bid
+    
+    currentBid = max(list(pot.values()))
+    remainingPlayers = [player for player in activePlayers if pot[player] < currentBid and player not in foldPlayers]
+    for player in remainingPlayers:
+        if player in humanPlayers:
+            print('Would you like to cover raise to {}?'.format(currentBid))
+            print('No [-1], Yes [0] (default)?')
+            try:
+                command = int(input())
+            except:
+                command = 0
+        else:
+            command = getAIdecision(activePlayers, player, cash, pot, hands, tableCards)
+    
+        if command < 0: # fold
+            print(player + ' folds.')
+            foldPlayers.append(player)
+        else:
+            print(player + ' covers raise.')
+            bid = max(list(pot.values()))
+            raise_bid = bid-pot[player]
+            if cash[player] > raise_bid:
+                cash[player] -= raise_bid
+                pot[player] += raise_bid
+            else:
+                print(player + ' is ALL IN!')
+                pot[player] += cash[player]
+                cash[player] = 0
+                            
+    for out in foldPlayers:
+        activePlayers.remove(out)
+    
+def playHand(players, humanPlayers, cash, bigBlind, smallBlind):
+    pot = {player:0 for player in players}
+    activePlayers = [player for player in players if cash[player] > 0]
+    
+    for player in activePlayers:
+        if activePlayers.index(player) == 0:
+            cash[player] -= smallBlind
+            pot[player] += smallBlind 
+        if activePlayers.index(player) == 1:
+            cash[player] -= bigBlind
+            pot[player] += bigBlind
+            
+    deck = getRandomDeck()
+    hands = {}
+        
+    for player in activePlayers:
+        hands[player] = [deck.pop(), deck.pop()]
+        
+    deck.pop() # burn
+    flop = [deck.pop(), deck.pop(), deck.pop()]
+    deck.pop() # burn
+    turn = [deck.pop()]
+    deck.pop() # burn
+    river = [deck.pop()]
+    
+    tableCards = []
+    bidRound(activePlayers, humanPlayers, cash, pot, hands, tableCards)
+    
+    if len(activePlayers) > 1:
+        tableCards = flop
+        print('\nFlop:  ' + str(tableCards))
+        bidRound(activePlayers, humanPlayers, cash, pot, hands, tableCards)
+    
+    if len(activePlayers) > 1:
+        tableCards = flop+turn
+        print('\nTurn:  ' + str(tableCards))
+        bidRound(activePlayers, humanPlayers, cash, pot, hands, tableCards)
+    
+    if len(activePlayers) > 1:
+        tableCards = flop+turn+river
+        print('\nRiver: ' + str(tableCards))
+        bidRound(activePlayers, humanPlayers, cash, pot, hands, tableCards)
+    
+    if not len(activePlayers) > 1:
+        print('\n\t{} has won!'.format(activePlayers[0]))
+        best_players = activePlayers
+        share = sum(list(pot.values()))
+    else: # SHOWDOWN
+        print('Table Cards: {}\nHands:'.format(str(flop+turn+river)))
+        best_score = 0
+        for player in activePlayers:
+            print('- {:20s}: {}'.format(player[:20], order(hands[player])))
+            score = getHandScore(flop+turn+river+hands[player])
+            if score > best_score:
+                best_players = [player]
+                best_score = score
+            elif score == best_score:
+                best_players.append(player)
+                
+        if len(best_players) == 1:
+            print('\n\t{} has won with {}!'.format(best_players[0], getHandDescription(best_score)))
+            share = sum(list(pot.values()))
+        else:
+            print('\n\tDraw with ' + getHandDescription(best_score) + '! Winning players: ' + ', '.join(best_players))
+            share = sum(list(pot.values()))/len(best_players)
+            
+    for winner in best_players:
+        cash[winner] += share
+    
+def playGame(players, humanPlayers, initialCash=1000, bigBlind=100, smallBlind=50):
+    cash = {player:initialCash for player in players}
+    while(len(players) > 1):
+        print('\nPots:')
+        for player in players:
+            print('{:20s}: {:5.0f}'.format(player[:20], cash[player]))
+        print()
+        playHand(players, humanPlayers, cash, bigBlind, smallBlind)
+        players.append(players.pop(0))
+        players = [player for player in players if cash[player] > 0]
+        time.sleep(2)
+    print('Game has ended! {} has won!'.format(players[0]))
+    
 if __name__ == '__main__':
     print('Starting...')
-    handPlayedTest(888900)
-#     handDealtTest(DEFAULT_MAX_GAME_COUNT)
+    players = ['Amaurixa', 'Flavio do Posto', 'Fredelicia', 'Marcelonha']
+    shuffle(players)
+    playGame(players, ['Fredelicia'])
     print('Done!')
