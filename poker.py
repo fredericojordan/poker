@@ -20,6 +20,7 @@ import time
 
 CARD_RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A']
 CARD_SUITS = ['♦', '♠', '♥', '♣']
+# CARD_SUITS = ['D', 'S', 'H', 'C']
 
 HAND_DESCRIPTION = ["No Pair:        ", \
                     "Pair:           ", \
@@ -260,52 +261,77 @@ def getHandDescription(score):
 def getKickersValue(cards):
     if hasRoyalStraightFlush(cards):
         return 0
+    
     elif hasStraightFlush(cards):
         return CARD_RANKS.index(getStraightFlush(cards)[0].rank) << 4*4
+    
     elif hasFourOfAKind(cards):
         ordCards = order(cards)
         value = CARD_RANKS.index(getFourOfAKind(cards)[0].rank) << 4*4    
         for card in getFourOfAKind(cards):
             ordCards.remove(card)
         return value + (CARD_RANKS.index(ordCards[0].rank) << 3*4)
+    
     elif hasFullHouse(cards):
         return (CARD_RANKS.index(getFullHouse(cards)[0].rank) << 4*4) + (CARD_RANKS.index(getFullHouse(cards)[3].rank) << 3*4)
+    
     elif hasFlush(cards):
         return (CARD_RANKS.index(getFlush(cards)[0].rank) << 4*4) + \
             (CARD_RANKS.index(getFlush(cards)[1].rank) << 3*4) + \
             (CARD_RANKS.index(getFlush(cards)[2].rank) << 2*4) + \
             (CARD_RANKS.index(getFlush(cards)[3].rank) << 1*4) + \
             CARD_RANKS.index(getFlush(cards)[4].rank)
+            
     elif hasStraight(cards):
         return CARD_RANKS.index(getStraight(cards)[0].rank) << 4*4 
+    
     elif hasThreeOfAKind(cards):
         ordCards = order(cards)
         value = CARD_RANKS.index(getThreeOfAKind(cards)[0].rank) << 4*4
         for card in getThreeOfAKind(cards):
             ordCards.remove(card)
-        return value + (CARD_RANKS.index(ordCards[0].rank) << 3*4) + (CARD_RANKS.index(ordCards[1].rank) << 2*4) 
+        if len(ordCards) > 0:
+            value += (CARD_RANKS.index(ordCards[0].rank) << 3*4)
+        if len(ordCards) > 1:
+            value += (CARD_RANKS.index(ordCards[1].rank) << 2*4)
+        return value
+    
     elif hasTwoPairs(cards):
         ordCards = order(cards)
         value = (CARD_RANKS.index(getPairs(cards)[0].rank) << 4*4) + (CARD_RANKS.index(getPairs(cards)[2].rank) << 3*4)  
         for card in getPairs(cards)[:4]:
             ordCards.remove(card)
-        return value + (CARD_RANKS.index(ordCards[0].rank) << 2*4)
+        if len(ordCards) > 0:
+            value += (CARD_RANKS.index(ordCards[0].rank) << 2*4)
+        return value
+    
     elif hasPair(cards):
         ordCards = order(cards)
         value = CARD_RANKS.index(getPairs(cards)[0].rank) << 4*4 
         for card in getPairs(cards):
             ordCards.remove(card)
-        return value + (CARD_RANKS.index(ordCards[0].rank) << 3*4) + \
-            (CARD_RANKS.index(ordCards[1].rank) << 2*4) + \
-            (CARD_RANKS.index(ordCards[2].rank) << 1*4) + \
-            CARD_RANKS.index(ordCards[3].rank)
+        if len(ordCards) > 0:
+            value += (CARD_RANKS.index(ordCards[0].rank) << 3*4)
+        if len(ordCards) > 1:
+            value += (CARD_RANKS.index(ordCards[1].rank) << 2*4)
+        if len(ordCards) > 2:
+            value += (CARD_RANKS.index(ordCards[2].rank) << 1*4)
+        if len(ordCards) > 3:
+            value += CARD_RANKS.index(ordCards[3].rank)
+        return value
+    
     else:
         ordCards = order(cards)
-        return (CARD_RANKS.index(ordCards[0].rank) << 4*4) + \
-            (CARD_RANKS.index(ordCards[1].rank) << 3*4) + \
-            (CARD_RANKS.index(ordCards[2].rank) << 2*4) + \
-            (CARD_RANKS.index(ordCards[3].rank) << 1*4) + \
-            CARD_RANKS.index(ordCards[4].rank) 
+        value = (CARD_RANKS.index(ordCards[0].rank) << 4*4)
+        if len(ordCards) > 1:
+            value += (CARD_RANKS.index(ordCards[1].rank) << 3*4)
+        if len(ordCards) > 2:
+            value += (CARD_RANKS.index(ordCards[2].rank) << 2*4)
+        if len(ordCards) > 3:
+            value += (CARD_RANKS.index(ordCards[3].rank) << 1*4)
+        if len(ordCards) > 4:
+            value += CARD_RANKS.index(ordCards[4].rank) 
+        return value
 
 def getHandScore(cards):
     return getHandCode(cards) + getKickersValue(cards)
@@ -429,8 +455,9 @@ def winningHandStats(games):
         r.write('0x' + format(score, '06x') + '\n')
     r.close()
     
-def getAIdecision(activePlayers, player, cash, pot, hands, tableCards): # TODO: better decisions
-    if len(activePlayers) > 1 and getHighCard(hands[player]) < Card('8', ''):
+def getAIdecision(myself, myHand, allPlayers, foldPlayers, cash, pot, tableCards): # TODO: better decisions
+    activePlayers = [player for player in allPlayers if player not in foldPlayers]
+    if len(activePlayers) > 1 and getHighCard(myHand) < Card('8', ''):
         return -1
     return 0
     
@@ -443,16 +470,16 @@ def bidRound(activePlayers, humanPlayers, cash, pot, hands, tableCards):
         
         if player in humanPlayers:
             print(str(player) + ' playing.')
-            print('Your hand: ' + str(order(hands[player])))
+            print('Your hand: ' + str(order(hands[player])) + ' (' + getHandDescription(getHandScore(tableCards+hands[player])) + ')')
             print('You currently have {:.0f} invested on a {:.0f} pot.'.format(pot[player], sum(list(pot.values()))))
-            print('You still have {:.0f} available.'.format(cash[player]))
+            print('You still have {:.0f} available of a total of {:.0f}.'.format(cash[player], cash[player]+pot[player] ))
             print('Would you like to fold [-1], check [0] (default), or raise to amount n [n]?')
             try:
                 command = int(input())
             except:
                 command = 0
         else:
-            command = getAIdecision(activePlayers, player, cash, pot, hands, tableCards)
+            command = getAIdecision(player, hands[player], activePlayers, foldPlayers, cash, pot, tableCards)
 
         if command > 0 and command < max(list(pot.values())):
             command = 0
@@ -491,7 +518,7 @@ def bidRound(activePlayers, humanPlayers, cash, pot, hands, tableCards):
             except:
                 command = 0
         else:
-            command = getAIdecision(activePlayers, player, cash, pot, hands, tableCards)
+            command = getAIdecision(player, hands[player], activePlayers, foldPlayers, cash, pot, tableCards)
     
         if command < 0: # fold
             print(player + ' folds.')
@@ -562,8 +589,8 @@ def playHand(players, humanPlayers, cash, bigBlind, smallBlind):
         print('Table Cards: {}\nHands:'.format(str(flop+turn+river)))
         best_score = 0
         for player in activePlayers:
-            print('- {:20s}: {}'.format(player[:20], order(hands[player])))
             score = getHandScore(flop+turn+river+hands[player])
+            print('- {:20s}: {} ({})'.format(player[:20], order(hands[player]), getHandDescription(score)))
             if score > best_score:
                 best_players = [player]
                 best_score = score
@@ -588,6 +615,7 @@ def playGame(players, humanPlayers, initialCash=1000, bigBlind=100, smallBlind=5
             print('{:20s}: {:5.0f}'.format(player[:20], cash[player]))
         print()
         playHand(players, humanPlayers, cash, bigBlind, smallBlind)
+        print('\n'.join('{} has dropped out!'.format(player) for player in players if cash[player] <= 0))
         players.append(players.pop(0))
         players = [player for player in players if cash[player] > 0]
         time.sleep(2)
@@ -595,7 +623,7 @@ def playGame(players, humanPlayers, initialCash=1000, bigBlind=100, smallBlind=5
     
 if __name__ == '__main__':
     print('Starting...')
-    players = ['Amaurixa', 'Flavio do Posto', 'Fredelicia', 'Marcelonha']
+    players = ['Amaurixa', 'Flavio do Posto', 'Fredelicia', 'Marcelonha', 'Henriqueta']
     shuffle(players)
     playGame(players, ['Fredelicia'])
     print('Done!')
