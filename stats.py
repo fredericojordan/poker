@@ -21,7 +21,8 @@ def sort_file():
     for line in stats_file.readlines():
         entries.append(line)
         
-    entries.sort(reverse=True)
+#     entries.sort(reverse=True)
+    entries.sort()
     
     stats_file.seek(0)
     stats_file.truncate()
