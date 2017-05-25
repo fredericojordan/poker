@@ -473,22 +473,22 @@ def get6PlayersHandPercentage(score):
 def getAIdecision(myself, myHand, allPlayers, foldPlayers, cash, pot, tableCards): # TODO: better decisions
     activePlayers = [player for player in allPlayers if player not in foldPlayers]
     
-    if not len(activePlayers) > 1:
+    if not len(activePlayers) > 1: # if only remaining player, check
         return 0
     
     myScore = getHandScore(myHand+tableCards)
 #     print('{}: {:.2f} %'.format(myself, 100*get6PlayersHandPercentage(myScore)))
 
-    raiseFactor = 1 + random.random() 
+    raiseFactor = 1.2 + 1.5*random.betavariate(2, 5)
     
-    if myScore >= 0x627000: # ~90%
-        return cash[myself]+pot[myself]
-    elif myScore >= 0x2a1b00: # ~30%
-        if random.random() > 0.8:
-            return 10*int((raiseFactor*pot[myself])/10)
+    if random.random() > 0.8:
+        if myScore >= 0x600000: # ~88%
+            return cash[myself]+pot[myself]
+        elif myScore >= 0x2a0000: # ~29%
+            return min(10*int((raiseFactor*pot[myself])/10), cash[myself]+pot[myself])
     
     if random.random() < 0.05: # bluff
-        return 10*int((raiseFactor*pot[myself])/10)
+        return min(10*int((raiseFactor*pot[myself])/10), cash[myself]+pot[myself])
     
     if getHighCard(myHand) < Card('8', ''):
         return -1
@@ -664,5 +664,5 @@ if __name__ == '__main__':
     print('Starting...')
     players = ['Amaurixa', 'Flavio do Posto', 'Fredelicia', 'Marcelonha', 'Henriqueta']
     random.shuffle(players)
-    playGame(players, ['Fredelicia'])
+    playGame(players, ['Fredelicia'], 3000)
     print('Done!')
